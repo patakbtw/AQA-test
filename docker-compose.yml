@@ -1,0 +1,49 @@
+services:
+  # standalone WireMock — external service mock
+  wiremock:
+    image: wiremock/wiremock:3.4.2
+    container_name: wiremock
+    ports:
+      - "8888:8888"
+    command: ["--port", "8888"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8888/__admin/health"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  # application under test
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.app
+    container_name: app
+    ports:
+      - "8080:8080"
+    depends_on:
+      wiremock:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:8080/endpoint || true"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # test runner
+  tests:
+    build:
+      context: .
+      dockerfile: Dockerfile.tests
+    container_name: tests
+    depends_on:
+      app:
+        condition: service_healthy
+      wiremock:
+        condition: service_healthy
+    environment:
+      - APP_URL=http://app:8080
+      - WIREMOCK_URL=http://wiremock:8888
+    volumes:
+      # mount report output so it's accessible on the host after tests finish
+      - ./target/allure-results:/tests/target/allure-results
+      - ./target/site:/tests/target/site
