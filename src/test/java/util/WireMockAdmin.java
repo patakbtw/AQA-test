@@ -33,7 +33,7 @@ public class WireMockAdmin {
         useEmbedded = true;
         embeddedServer = new WireMockServer(WireMockConfiguration.wireMockConfig().port(8888));
         embeddedServer.start();
-        System.out.println("[WireMockAdmin] Standalone WireMock not found — started embedded on port 8888");
+        System.out.println("[WireMockAdmin] Standalone WireMock not found - started embedded on port 8888");
 
         // shut down cleanly when JVM exits
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {

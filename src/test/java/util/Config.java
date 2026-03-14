@@ -1,9 +1,6 @@
 package util;
 
-/**
- * Читает настройки из переменных окружения.
- * Если переменная не задана — используется дефолтное значение для локального запуска.
- */
+// Reads env, if it can't find the variable, it uses the default value
 public class Config {
 
     public static String appUrl() {

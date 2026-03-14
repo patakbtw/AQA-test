@@ -1,6 +1,7 @@
 package tests;
 
 import io.qameta.allure.*;
+import io.qameta.allure.restassured.AllureRestAssured;
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
 import model.ApiResponse;
@@ -8,245 +9,204 @@ import org.junit.jupiter.api.*;
 import util.Config;
 import util.WireMockAdmin;
 
+import static util.TestConfig.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Epic("Request Validation")
 @Feature("General Checks")
 public class GeneralValidationTest {
 
-    static final String VALID_TOKEN = "ABCDEF1234567890ABCDEF1234567890";
+        @BeforeEach
+        void reset() {
+                RestAssured.filters(new AllureRestAssured());
+                WireMockAdmin.reset();
+                // ensure token is logged out before each test
+                RestAssured.given()
+                                .contentType("application/x-www-form-urlencoded")
+                                .accept("application/json")
+                                .header("X-Api-Key", API_KEY)
+                                .formParam("token", HEX_TOKEN)
+                                .formParam("action", "LOGOUT")
+                                .post(Config.appUrl() + "/endpoint");
+        }
 
-    @BeforeEach
-    void reset() {
-        WireMockAdmin.reset();
-        // ensure token is logged out before each test
-        RestAssured.given()
-                .contentType("application/x-www-form-urlencoded")
-                .accept("application/json")
-                .header("X-Api-Key", "qazWSXedc")
-                .formParam("token", VALID_TOKEN)
-                .formParam("action", "LOGOUT")
-                .post(Config.appUrl() + "/endpoint");
-    }
+        @Step("Login with token {token}")
+        void doLogin(String token) {
+                WireMockAdmin.stubAuthSuccess();
+                RestAssured.given()
+                                .contentType("application/x-www-form-urlencoded")
+                                .accept("application/json")
+                                .header("X-Api-Key", API_KEY)
+                                .formParam("token", token)
+                                .formParam("action", "LOGIN")
+                                .post(Config.appUrl() + "/endpoint");
+                WireMockAdmin.reset();
+        }
 
-    // helper method — performs LOGIN for a given token
-    void doLogin(String token) throws Exception {
-        WireMockAdmin.stubAuthSuccess();
-        Thread.sleep(300);
-        RestAssured.given()
-                .contentType("application/x-www-form-urlencoded")
-                .accept("application/json")
-                .header("X-Api-Key", "qazWSXedc")
-                .formParam("token", token)
-                .formParam("action", "LOGIN")
-                .post(Config.appUrl() + "/endpoint");
-        WireMockAdmin.reset();
-    }
+        @Step("Send request with action '{action}' and token {token}")
+        Response sendRequest(String token, String action) {
+                return RestAssured.given()
+                                .contentType("application/x-www-form-urlencoded")
+                                .accept("application/json")
+                                .header("X-Api-Key", API_KEY)
+                                .formParam("token", token)
+                                .formParam("action", action)
+                                .post(Config.appUrl() + "/endpoint");
+        }
 
-    @Test
-    @Story("Unknown action")
-    @Severity(SeverityLevel.NORMAL)
-    @DisplayName("An unknown action value returns an error")
-    void test1() throws Exception {
-        Thread.sleep(500);
+        @Step("Send request with no body")
+        Response sendEmptyRequest() {
+                return RestAssured.given()
+                                .contentType("application/x-www-form-urlencoded")
+                                .accept("application/json")
+                                .header("X-Api-Key", API_KEY)
+                                .post(Config.appUrl() + "/endpoint");
+        }
 
-        Response response = RestAssured.given()
-                .contentType("application/x-www-form-urlencoded")
-                .accept("application/json")
-                .header("X-Api-Key", "qazWSXedc")
-                .formParam("token", VALID_TOKEN)
-                .formParam("action", "UNKNOWN_ACTION")
-                .post(Config.appUrl() + "/endpoint");
+        @Step("Send request with no token parameter")
+        Response sendRequestWithoutToken(String action) {
+                return RestAssured.given()
+                                .contentType("application/x-www-form-urlencoded")
+                                .accept("application/json")
+                                .header("X-Api-Key", API_KEY)
+                                .formParam("action", action)
+                                .post(Config.appUrl() + "/endpoint");
+        }
 
-        int code = response.statusCode();
-        assert code == 400 || response.as(ApiResponse.class).getResult().equals("ERROR");
-    }
+        @Test
+        @Story("Unknown action")
+        @Severity(SeverityLevel.NORMAL)
+        @DisplayName("An unknown action value returns an error")
+        @Description("Send a request with an action value that does not exist. Must be rejected with 400 or ERROR.")
+        void test1() {
+                Response response = sendRequest(HEX_TOKEN, "UNKNOWN_ACTION");
+                int code = response.statusCode();
 
-    @Test
-    @Story("Missing parameters")
-    @Severity(SeverityLevel.NORMAL)
-    @DisplayName("A completely empty request body returns an error")
-    void test2() throws Exception {
-        Thread.sleep(500);
+                Allure.step("Check that unknown action is rejected with 400 or ERROR", () -> assertTrue(
+                                code == 400 || response.as(ApiResponse.class).getResult().equals("ERROR")));
+        }
 
-        Response response = RestAssured.given()
-                .contentType("application/x-www-form-urlencoded")
-                .accept("application/json")
-                .header("X-Api-Key", "qazWSXedc")
-                .post(Config.appUrl() + "/endpoint");
+        @Test
+        @Story("Missing parameters")
+        @Severity(SeverityLevel.NORMAL)
+        @DisplayName("A completely empty request body returns an error")
+        @Description("Send a request with no parameters at all. Application must reject it with 400 or ERROR.")
+        void test2() {
+                Response response = sendEmptyRequest();
+                int code = response.statusCode();
 
-        int code = response.statusCode();
-        assert code == 400 || response.as(ApiResponse.class).getResult().equals("ERROR");
-    }
+                Allure.step("Check that empty request is rejected with 400 or ERROR", () -> assertTrue(
+                                code == 400 || response.as(ApiResponse.class).getResult().equals("ERROR")));
+        }
 
-    @Test
-    @Story("Missing parameters")
-    @Severity(SeverityLevel.NORMAL)
-    @DisplayName("Request without token parameter returns an error")
-    void test3() throws Exception {
-        Thread.sleep(500);
+        @Test
+        @Story("Missing parameters")
+        @Severity(SeverityLevel.NORMAL)
+        @DisplayName("Request without token parameter returns an error")
+        @Description("Send a LOGIN request without the token field. Application must reject it.")
+        void test3() {
+                Response response = sendRequestWithoutToken("LOGIN");
+                int code = response.statusCode();
 
-        Response response = RestAssured.given()
-                .contentType("application/x-www-form-urlencoded")
-                .accept("application/json")
-                .header("X-Api-Key", "qazWSXedc")
-                .formParam("action", "LOGIN")
-                .post(Config.appUrl() + "/endpoint");
+                Allure.step("Check that request without token is rejected with 400 or ERROR", () -> assertTrue(
+                                code == 400 || response.as(ApiResponse.class).getResult().equals("ERROR")));
+        }
 
-        int code = response.statusCode();
-        assert code == 400 || response.as(ApiResponse.class).getResult().equals("ERROR");
-    }
+        @Test
+        @Story("Response format")
+        @Severity(SeverityLevel.CRITICAL)
+        @DisplayName("Every response always contains the result field")
+        @Description("Perform LOGIN, ACTION, and LOGOUT. Each response must contain a non-null result field.")
+        void test4() {
+                WireMockAdmin.stubAuthSuccess();
 
-    @Test
-    @Story("Response format")
-    @Severity(SeverityLevel.CRITICAL)
-    @DisplayName("Every response always contains the result field")
-    void test4() throws Exception {
-        WireMockAdmin.stubAuthSuccess();
-        Thread.sleep(500);
+                ApiResponse login = sendRequest(HEX_TOKEN, "LOGIN").then().extract().as(ApiResponse.class);
+                Allure.step("Check that LOGIN response contains result field", () -> assertNotNull(login.getResult()));
 
-        ApiResponse login = RestAssured.given()
-                .contentType("application/x-www-form-urlencoded")
-                .accept("application/json")
-                .header("X-Api-Key", "qazWSXedc")
-                .formParam("token", VALID_TOKEN)
-                .formParam("action", "LOGIN")
-                .post(Config.appUrl() + "/endpoint")
-                .then().extract().as(ApiResponse.class);
+                WireMockAdmin.reset();
+                WireMockAdmin.stubDoActionSuccess();
 
-        WireMockAdmin.reset();
-        WireMockAdmin.stubDoActionSuccess();
+                ApiResponse action = sendRequest(HEX_TOKEN, "ACTION").then().extract().as(ApiResponse.class);
+                Allure.step("Check that ACTION response contains result field",
+                                () -> assertNotNull(action.getResult()));
 
-        ApiResponse action = RestAssured.given()
-                .contentType("application/x-www-form-urlencoded")
-                .accept("application/json")
-                .header("X-Api-Key", "qazWSXedc")
-                .formParam("token", VALID_TOKEN)
-                .formParam("action", "ACTION")
-                .post(Config.appUrl() + "/endpoint")
-                .then().extract().as(ApiResponse.class);
+                ApiResponse logout = sendRequest(HEX_TOKEN, "LOGOUT").then().extract().as(ApiResponse.class);
+                Allure.step("Check that LOGOUT response contains result field",
+                                () -> assertNotNull(logout.getResult()));
+        }
 
-        ApiResponse logout = RestAssured.given()
-                .contentType("application/x-www-form-urlencoded")
-                .accept("application/json")
-                .header("X-Api-Key", "qazWSXedc")
-                .formParam("token", VALID_TOKEN)
-                .formParam("action", "LOGOUT")
-                .post(Config.appUrl() + "/endpoint")
-                .then().extract().as(ApiResponse.class);
+        @Test
+        @Story("Response format")
+        @Severity(SeverityLevel.NORMAL)
+        @DisplayName("Error response always contains a non-empty message field")
+        @Description("Attempt ACTION without LOGIN. Response must be ERROR and contain a non-empty message explaining the reason.")
+        void test5() {
+                ApiResponse response = sendRequest(HEX_TOKEN, "ACTION").then().extract().as(ApiResponse.class);
 
-        assertNotNull(login.getResult());
-        assertNotNull(action.getResult());
-        assertNotNull(logout.getResult());
-    }
+                Allure.step("Check that result is ERROR", () -> assertEquals("ERROR", response.getResult()));
+                Allure.step("Check that message field is present and not empty", () -> {
+                        assertNotNull(response.getMessage());
+                        assertFalse(response.getMessage().isBlank());
+                });
+        }
 
-    @Test
-    @Story("Response format")
-    @Severity(SeverityLevel.NORMAL)
-    @DisplayName("Error response always contains a non-empty message field")
-    void test5() throws Exception {
-        Thread.sleep(500);
+        @Test
+        @Story("Case sensitivity")
+        @Severity(SeverityLevel.MINOR)
+        @DisplayName("Action value in lowercase is not recognized")
+        @Description("Send a request with action 'login' in lowercase. Only uppercase values are valid per specification.")
+        void test6() {
+                Response response = sendRequest(HEX_TOKEN, "login");
+                int code = response.statusCode();
 
-        // ACTION without login — must return ERROR with a message
-        ApiResponse response = RestAssured.given()
-                .contentType("application/x-www-form-urlencoded")
-                .accept("application/json")
-                .header("X-Api-Key", "qazWSXedc")
-                .formParam("token", VALID_TOKEN)
-                .formParam("action", "ACTION")
-                .post(Config.appUrl() + "/endpoint")
-                .then()
-                .extract().as(ApiResponse.class);
+                Allure.step("Check that lowercase action is rejected with 400 or ERROR", () -> assertTrue(
+                                code == 400 || response.as(ApiResponse.class).getResult().equals("ERROR")));
+        }
 
-        assertEquals("ERROR", response.getResult());
-        assertNotNull(response.getMessage());
-        assertFalse(response.getMessage().isBlank());
-    }
+        @Test
+        @Story("Response format")
+        @Severity(SeverityLevel.NORMAL)
+        @DisplayName("Successful response does not contain a message field")
+        @Description("Perform ACTION on a logged-in token. Successful response should not contain a message field.")
+        void test7() {
+                doLogin(HEX_TOKEN);
+                WireMockAdmin.stubDoActionSuccess();
 
-    @Test
-    @Story("Case sensitivity")
-    @Severity(SeverityLevel.MINOR)
-    @DisplayName("Action value in lowercase is not recognized")
-    void test6() throws Exception {
-        Thread.sleep(500);
+                ApiResponse response = sendRequest(HEX_TOKEN, "ACTION").then().extract().as(ApiResponse.class);
 
-        Response response = RestAssured.given()
-                .contentType("application/x-www-form-urlencoded")
-                .accept("application/json")
-                .header("X-Api-Key", "qazWSXedc")
-                .formParam("token", VALID_TOKEN)
-                .formParam("action", "login") // lowercase — should not be accepted
-                .post(Config.appUrl() + "/endpoint");
+                Allure.step("Check that ACTION result is OK", () -> assertEquals("OK", response.getResult()));
+                // assertNull(response.getMessage()); // commented out - occasionally fails
+        }
 
-        int code = response.statusCode();
-        assert code == 400 || response.as(ApiResponse.class).getResult().equals("ERROR");
-    }
+        @Test
+        @Story("External service interaction")
+        @Severity(SeverityLevel.NORMAL)
+        @DisplayName("LOGIN forwards the token to the external /auth service")
+        @Description("After LOGIN, verify that the application made a request to the external /auth service.")
+        void test8() {
+                WireMockAdmin.stubAuthSuccess();
+                sendRequest(HEX_TOKEN, "LOGIN");
 
-    @Test
-    @Story("Response format")
-    @Severity(SeverityLevel.NORMAL)
-    @DisplayName("Successful response does not contain a message field")
-    void test7() throws Exception {
-        doLogin(VALID_TOKEN);
-        WireMockAdmin.stubDoActionSuccess();
-        Thread.sleep(500);
+                int count = WireMockAdmin.getRequestCount("/auth");
+                Allure.step("Check that /auth was called at least once",
+                                () -> assertTrue(count >= 1, "Expected /auth to be called, but count was: " + count));
+        }
 
-        ApiResponse response = RestAssured.given()
-                .contentType("application/x-www-form-urlencoded")
-                .accept("application/json")
-                .header("X-Api-Key", "qazWSXedc")
-                .formParam("token", VALID_TOKEN)
-                .formParam("action", "ACTION")
-                .post(Config.appUrl() + "/endpoint")
-                .then()
-                .extract().as(ApiResponse.class);
+        @Test
+        @Story("External service interaction")
+        @Severity(SeverityLevel.NORMAL)
+        @DisplayName("ACTION forwards the token to the external /doAction service")
+        @Description("After ACTION, verify that the application made a request to the external /doAction service.")
+        void test9() {
+                doLogin(HEX_TOKEN);
+                WireMockAdmin.stubDoActionSuccess();
+                sendRequest(HEX_TOKEN, "ACTION");
 
-        assertEquals("OK", response.getResult());
-        // assertNull(response.getMessage()); // commented out — occasionally fails
-    }
-
-    @Test
-    @Story("External service interaction")
-    @Severity(SeverityLevel.NORMAL)
-    @DisplayName("LOGIN forwards the token to the external /auth service")
-    void test8() throws Exception {
-        WireMockAdmin.stubAuthSuccess();
-        Thread.sleep(500);
-
-        RestAssured.given()
-                .contentType("application/x-www-form-urlencoded")
-                .accept("application/json")
-                .header("X-Api-Key", "qazWSXedc")
-                .formParam("token", VALID_TOKEN)
-                .formParam("action", "LOGIN")
-                .post(Config.appUrl() + "/endpoint");
-
-        // verify that /auth was called at least once
-        int count = WireMockAdmin.getRequestCount("/auth");
-        assert count >= 1 : "Expected /auth to be called, but count was: " + count;
-    }
-
-    @Test
-    @Story("External service interaction")
-    @Severity(SeverityLevel.NORMAL)
-    @DisplayName("ACTION forwards the token to the external /doAction service")
-    void test9() throws Exception {
-        doLogin(VALID_TOKEN);
-        WireMockAdmin.stubDoActionSuccess();
-        Thread.sleep(500);
-
-        RestAssured.given()
-                .contentType("application/x-www-form-urlencoded")
-                .accept("application/json")
-                .header("X-Api-Key", "qazWSXedc")
-                .formParam("token", VALID_TOKEN)
-                .formParam("action", "ACTION")
-                .post(Config.appUrl() + "/endpoint");
-
-        // verify that /doAction was called at least once
-        int count = WireMockAdmin.getRequestCount("/doAction");
-        assert count >= 1 : "Expected /doAction to be called, but count was: " + count;
-    }
+                int count = WireMockAdmin.getRequestCount("/doAction");
+                Allure.step("Check that /doAction was called at least once", () -> assertTrue(count >= 1,
+                                "Expected /doAction to be called, but count was: " + count));
+        }
 }
