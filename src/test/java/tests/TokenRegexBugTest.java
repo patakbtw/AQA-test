@@ -3,11 +3,11 @@ package tests;
 import io.qameta.allure.*;
 import io.qameta.allure.restassured.AllureRestAssured;
 import io.restassured.RestAssured;
-import io.restassured.response.Response;
 import model.ApiResponse;
 import org.junit.jupiter.api.*;
 
 import util.Config;
+import util.TestSuite;
 import util.WireMockAdmin;
 import static util.TestConfig.*;
 
@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @Epic("Token")
 @Feature("Token Validation")
-public class TokenRegexBugTest {
+public class TokenRegexBugTest extends TestSuite {
   @BeforeEach
   void reset() {
     RestAssured.filters(new AllureRestAssured());

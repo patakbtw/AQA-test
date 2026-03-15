@@ -7,6 +7,7 @@ import io.restassured.response.Response;
 import model.ApiResponse;
 import org.junit.jupiter.api.*;
 import util.Config;
+import util.TestSuite;
 import util.WireMockAdmin;
 
 import static util.TestConfig.*;
@@ -17,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Epic("Request Validation")
 @Feature("General Checks")
-public class GeneralValidationTest {
+public class GeneralValidationTest extends TestSuite {
 
         @BeforeEach
         void reset() {

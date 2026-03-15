@@ -7,6 +7,7 @@ import io.restassured.response.Response;
 import model.ApiResponse;
 import org.junit.jupiter.api.*;
 import util.Config;
+import util.TestSuite;
 import util.WireMockAdmin;
 
 import static util.TestConfig.*;
@@ -14,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @Epic("User Actions")
 @Feature("ACTION")
-public class ActionTest {
+public class ActionTest extends TestSuite {
 
     @BeforeEach
     void reset() {

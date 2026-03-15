@@ -5,6 +5,7 @@ import io.qameta.allure.restassured.AllureRestAssured;
 import io.restassured.RestAssured;
 import org.junit.jupiter.api.*;
 import util.Config;
+import util.TestSuite;
 import util.WireMockAdmin;
 
 import static util.TestConfig.*;
@@ -12,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Epic("Security")
 @Feature("API Key Validation")
-public class ApiKeyTest {
+public class ApiKeyTest extends TestSuite {
 
     @BeforeEach
     void reset() {
