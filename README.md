@@ -1,7 +1,7 @@
 # AQA Test Project
 
 API test suite for a Spring Boot application.
-34 tests covering LOGIN / ACTION / LOGOUT / API Key validation.
+35 tests covering LOGIN / ACTION / LOGOUT / API Key validation.
 
 ## Stack
 
@@ -35,6 +35,7 @@ API test suite for a Spring Boot application.
 | LogoutTest            | 6     |
 | ApiKeyTest            | 5     |
 | GeneralValidationTest | 9     |
+| TokenRegexBugTest     | 1     |
 
 ## Report preview
 
