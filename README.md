@@ -39,3 +39,9 @@ API test suite for a Spring Boot application.
 ## Report preview
 
 ![Allure Report](docs/allure-report.png)
+
+## Findings
+
+During test development, a discrepancy was found between the documented
+token format and the actual validation logic.
+See [Issue #1](../../issues/1) for details.
