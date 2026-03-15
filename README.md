@@ -38,7 +38,9 @@ API test suite for a Spring Boot application.
 
 ## Report preview
 
-![Allure Report](docs/allure-report.png)
+![Allure Report](docs/allure-report-overview.png)
+
+![Allure Report](docs/allure-report-behaviours.png)
 
 ## Findings
 
