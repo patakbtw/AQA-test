@@ -5,22 +5,23 @@ import io.qameta.allure.restassured.AllureRestAssured;
 import io.restassured.RestAssured;
 import model.ApiResponse;
 import org.junit.jupiter.api.*;
-
 import util.Config;
 import util.TestSuite;
 import util.WireMockAdmin;
-import static util.TestConfig.*;
 
+import static util.TestConfig.*;
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@Epic("Token")
+@Epic("Authentication")
 @Feature("Token Validation")
 public class TokenRegexBugTest extends TestSuite {
+
   @BeforeEach
   void reset() {
-    RestAssured.filters(new AllureRestAssured());
+    RestAssured.reset();
     WireMockAdmin.reset();
-    // clean up token state before each test
+    // no filter — cleanup only
     RestAssured.given()
         .contentType("application/x-www-form-urlencoded")
         .accept("application/json")
@@ -32,8 +33,8 @@ public class TokenRegexBugTest extends TestSuite {
 
   @Test
   @Story("Token format per specification")
-  @Severity(SeverityLevel.NORMAL)
-  @DisplayName("[BUG] Token with chars G-Z is rejected despite being valid per spec")
+  @Severity(SeverityLevel.CRITICAL)
+  @DisplayName("[BUG] Full LOGIN → ACTION → LOGOUT flow fails for token with chars G-Z")
   @Description("Per API specification, tokens may contain A-Z and 0-9 characters.\n\n" +
       "Bug discovered by decompiling UserRequest.class from the jar:\n" +
       "  Actual regex:   ^[0-9A-F]{32}$  (hex only)\n" +
@@ -43,30 +44,30 @@ public class TokenRegexBugTest extends TestSuite {
       "This test will pass once the bug is fixed.")
   @Issue("1")
   @Link(name = "Bug Report", url = "https://github.com/patakbtw/AQA-test/issues/1")
-  @Disabled("Fails due to bug: app uses strings with characters A-F 0-9 instead of documented A-Z 0-9")
   void testFullFlowWithSpecToken() {
-    Allure.step("Stub external auth service to retuen success", WireMockAdmin::stubAuthSuccess);
-
+    Allure.step("Stub external auth service to return success", WireMockAdmin::stubAuthSuccess);
     ApiResponse login = performLogin(SPEC_TOKEN);
-    Allure.step("Check that LOGIN result is OK", () -> assertEquals("OK", login.getResult()));
 
-    Allure.step("Reset stubs and stub exernal action setvice to return success", () -> {
+    Allure.step("Reset stubs and stub external action service to return success", () -> {
       WireMockAdmin.reset();
       WireMockAdmin.stubDoActionSuccess();
     });
-
     ApiResponse action = performAction(SPEC_TOKEN);
-    Allure.step("Check that ACTION result is ok", () -> assertEquals("OK", action.getResult()));
 
     Allure.step("Reset stubs before LOGOUT", WireMockAdmin::reset);
-
     ApiResponse logout = performLogout(SPEC_TOKEN);
-    Allure.step("Check that LOGOUT result is ok", () -> assertEquals("OK", logout.getResult()));
+
+    // run all checks independently — all failures are reported even if LOGIN fails
+    assertAll(
+        () -> Allure.step("Check that LOGIN result is OK", () -> assertEquals("OK", login.getResult())),
+        () -> Allure.step("Check that ACTION result is OK", () -> assertEquals("OK", action.getResult())),
+        () -> Allure.step("Check that LOGOUT result is OK", () -> assertEquals("OK", logout.getResult())));
   }
 
   @Step("Send LOGIN request with token {token}")
   private ApiResponse performLogin(String token) {
     return RestAssured.given()
+        .filter(new AllureRestAssured())
         .contentType("application/x-www-form-urlencoded")
         .accept("application/json")
         .header("X-Api-Key", API_KEY)
@@ -80,6 +81,7 @@ public class TokenRegexBugTest extends TestSuite {
   @Step("Send ACTION request with token {token}")
   private ApiResponse performAction(String token) {
     return RestAssured.given()
+        .filter(new AllureRestAssured())
         .contentType("application/x-www-form-urlencoded")
         .accept("application/json")
         .header("X-Api-Key", API_KEY)
@@ -93,6 +95,7 @@ public class TokenRegexBugTest extends TestSuite {
   @Step("Send LOGOUT request with token {token}")
   private ApiResponse performLogout(String token) {
     return RestAssured.given()
+        .filter(new AllureRestAssured())
         .contentType("application/x-www-form-urlencoded")
         .accept("application/json")
         .header("X-Api-Key", API_KEY)

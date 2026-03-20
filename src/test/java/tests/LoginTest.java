@@ -20,7 +20,7 @@ public class LoginTest extends TestSuite {
 
     @BeforeEach
     void reset() {
-        RestAssured.filters(new AllureRestAssured());
+        RestAssured.replaceFiltersWith(new AllureRestAssured());
         WireMockAdmin.reset();
         // clean up token state before each test
         RestAssured.given()

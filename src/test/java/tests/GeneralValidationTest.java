@@ -22,7 +22,7 @@ public class GeneralValidationTest extends TestSuite {
 
         @BeforeEach
         void reset() {
-                RestAssured.filters(new AllureRestAssured());
+                RestAssured.replaceFiltersWith(new AllureRestAssured());
                 WireMockAdmin.reset();
                 // ensure token is logged out before each test
                 RestAssured.given()

@@ -19,7 +19,7 @@ public class ActionTest extends TestSuite {
 
     @BeforeEach
     void reset() {
-        RestAssured.filters(new AllureRestAssured());
+        RestAssured.replaceFiltersWith(new AllureRestAssured());
         WireMockAdmin.reset();
     }
 

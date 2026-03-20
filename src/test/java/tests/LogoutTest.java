@@ -20,7 +20,7 @@ public class LogoutTest extends TestSuite {
 
         @BeforeEach
         void reset() {
-                RestAssured.filters(new AllureRestAssured());
+                RestAssured.replaceFiltersWith(new AllureRestAssured());
                 WireMockAdmin.reset();
         }
 
